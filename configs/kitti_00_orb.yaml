@@ -1,0 +1,11 @@
+name: kitti_00_orb
+data_root: /content/kitti        # change to your local path on desktop or cluster
+sequence: "00"
+out_dir: results
+max_frames: 500                  # set to null for the full sequence once it works
+use_gt_scale: true               # monocular scale is unknown; fixed later with depth
+
+n_features: 3000
+ratio: 0.75
+ransac_thresh: 1.0
+min_inliers: 30                  # tracking failure rule: fewer inliers than this
