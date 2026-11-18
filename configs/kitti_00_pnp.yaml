@@ -1,0 +1,18 @@
+name: kitti_00_pnp
+method: pnp                      # landmark map + PnP RANSAC
+data_root: /content/kitti        # change to your local path on desktop or cluster
+sequence: "00"
+out_dir: results
+max_frames: 500                  # same 500 frames as the baseline row; set to null for the full run
+scale_source: gt                 # step length from GT (same as baseline). Replace with depth later
+
+n_features: 3000
+ratio: 0.75
+ransac_thresh: 1.0               # essential matrix RANSAC (px)
+min_inliers: 30                  # tracking failure rule: fewer inliers than this
+
+pnp_thresh: 2.0                  # PnP RANSAC reprojection threshold (px)
+reproj_thresh: 2.0               # triangulation reprojection check (px)
+min_parallax_deg: 0.5            # reject landmarks with less parallax than this
+max_depth: 150.0                 # m
+max_step: 4.0                    # m per frame; a larger pose jump counts as a failure

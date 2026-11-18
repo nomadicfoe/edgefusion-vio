@@ -1,7 +1,9 @@
 """Run monocular VO on a KITTI sequence and save a TUM-format trajectory.
 
 Usage:
-    python -m src.run_vo --config configs/kitti_00_orb.yaml
+    python -m src.run_vo --config configs/kitti_00_pnp.yaml
+
+Config key `method`: "twoview" (frame-to-frame baseline) or "pnp" (landmark map + PnP).
 """
 import argparse
 import csv
@@ -12,7 +14,8 @@ import numpy as np
 import yaml
 
 from src.kitti import KittiSequence
-from src.vo import MonoVO
+from src.vo import TwoViewTracker
+from src.vo_pnp import PnPTracker
 
 
 def save_tum(path, poses, timestamps):
@@ -26,6 +29,15 @@ def save_tum(path, poses, timestamps):
             f.write(f"{ts:.6f} {t[0]:.6f} {t[1]:.6f} {t[2]:.6f} {q[0]:.6f} {q[1]:.6f} {q[2]:.6f} {q[3]:.6f}\n")
 
 
+def build_tracker(cfg, K):
+    method = cfg.get("method", "twoview")
+    if method == "twoview":
+        return TwoViewTracker(K, cfg)
+    if method == "pnp":
+        return PnPTracker(K, cfg)
+    raise ValueError(f"unknown method: {method}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
@@ -34,51 +46,22 @@ def main():
 
     seq = KittiSequence(cfg["data_root"], cfg["sequence"])
     n = len(seq) if cfg.get("max_frames") is None else min(cfg["max_frames"], len(seq))
-    vo = MonoVO(
-        seq.K,
-        n_features=cfg["n_features"],
-        ratio=cfg["ratio"],
-        ransac_thresh=cfg["ransac_thresh"],
-        min_inliers=cfg["min_inliers"],
-    )
+    tracker = build_tracker(cfg, seq.K)
 
     out_dir = Path(cfg["out_dir"]) / cfg["name"]
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    T_w = np.eye(4)
-    poses = [T_w.copy()]
+    poses = []
     frame_log = []  # per-frame stats, used later for the reliability model
-    img_prev = seq.image(0)
-    kp_prev, des_prev = vo.detect(img_prev)
     t0 = time.time()
-
-    for i in range(1, n):
+    for i in range(n):
         img = seq.image(i)
-        kp, des = vo.detect(img)
-        p1, p2 = vo.match(kp_prev, des_prev, kp, des)
-        R, t, n_inl = vo.relative_pose(p1, p2)
-
-        failed = R is None or n_inl < vo.min_inliers
-        if not failed:
-            scale = seq.gt_step(i) if cfg["use_gt_scale"] else 1.0
-            T_rel = np.eye(4)  # frame i-1 -> frame i
-            T_rel[:3, :3] = R
-            T_rel[:3, 3] = t * scale
-            T_w = T_w @ np.linalg.inv(T_rel)
-        # on failure keep last pose (constant position), flag it
-
-        poses.append(T_w.copy())
-        frame_log.append(
-            {
-                "frame": i,
-                "n_kp": len(kp),
-                "n_matches": 0 if p1 is None else len(p1),
-                "n_inliers": n_inl,
-                "failed": int(failed),
-            }
-        )
-        kp_prev, des_prev = kp, des
-        if i % 200 == 0:
+        gt_step = seq.gt_step(i) if (seq.gt is not None and i > 0) else None
+        T_wc, info = tracker.process(img, gt_step)
+        poses.append(T_wc)
+        if i > 0:
+            frame_log.append({"frame": i, **info})
+        if i > 0 and i % 200 == 0:
             print(f"frame {i}/{n}  fps={i / (time.time() - t0):.1f}")
 
     elapsed = time.time() - t0
