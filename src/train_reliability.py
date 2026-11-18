@@ -47,10 +47,16 @@ def main():
     ap.add_argument("--thr_t", type=float, default=10.0)
     ap.add_argument("--thr_r", type=float, default=1.0)
     ap.add_argument("--out", default=None, help="save out-of-fold predictions here")
+    ap.add_argument("--extra", default=None, help="extra features CSV from src.extra_features")
     args = ap.parse_args()
 
     df = pd.read_csv(args.data, dtype={"seq": str})
     df = df.dropna(subset=["t_pct", "r_deg"]).reset_index(drop=True)
+    if args.extra:
+        extra = pd.read_csv(args.extra)
+        df = df.merge(extra, on=["run", "frame"], how="left")
+        covered = df["epi_med"].notna().mean() if "epi_med" in df else 0.0
+        print(f"merged extra features, {100 * covered:.0f}% of frames have the epipolar cue")
     df["bad"] = ((df["t_pct"] > args.thr_t) | (df["r_deg"] > args.thr_r)).astype(int)
     feats = [c for c in df.columns if c not in META]
     seqs = sorted(df["seq"].unique())

@@ -33,5 +33,6 @@ poses/00.txt
 - `src/run_vo.py` runs a config, writes trajectory and per-frame log
 - `src/evaluate.py` ATE, RPE, RPE drift proxy, KITTI metric, plot, one row per run in `results/results_table.csv`
 - `src/make_labels.py` per-frame local error labels (vs GT) and GT-free features, one dataset CSV for the reliability model
+- `src/extra_features.py` image sharpness/brightness, optical flow, and flow vs estimated-pose epipolar error (no VO rerun needed)
 - `src/train_reliability.py` gradient boosting reliability model, leave-one-sequence-out, compared with one-feature rules
 - `configs/` one yaml per experiment
