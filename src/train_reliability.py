@@ -48,6 +48,7 @@ def main():
     ap.add_argument("--thr_r", type=float, default=1.0)
     ap.add_argument("--out", default=None, help="save out-of-fold predictions here")
     ap.add_argument("--extra", default=None, help="extra features CSV from src.extra_features")
+    ap.add_argument("--drop", default=None, help="comma list; drop features whose name contains any of these")
     args = ap.parse_args()
 
     df = pd.read_csv(args.data, dtype={"seq": str})
@@ -59,6 +60,11 @@ def main():
         print(f"merged extra features, {100 * covered:.0f}% of frames have the epipolar cue")
     df["bad"] = ((df["t_pct"] > args.thr_t) | (df["r_deg"] > args.thr_r)).astype(int)
     feats = [c for c in df.columns if c not in META]
+    if args.drop:
+        drop = [d for d in args.drop.split(",") if d]
+        gone = [c for c in feats if any(d in c for d in drop)]
+        feats = [c for c in feats if c not in gone]
+        print(f"dropped {len(gone)} features matching {drop}")
     seqs = sorted(df["seq"].unique())
     print(f"{len(df)} frames, {len(feats)} features, bad if t_pct>{args.thr_t} or r_deg>{args.thr_r}")
     print(f"overall bad rate {100 * df['bad'].mean():.1f}%, sequences {seqs}\n")
