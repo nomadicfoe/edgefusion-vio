@@ -14,7 +14,8 @@ python -m src.run_vo --config configs/kitti_00_pnp.yaml    # landmark map + PnP 
 python -m src.evaluate --run results/kitti_00_pnp
 ```
 
-Both use the ground-truth step for scale for now (`use_gt_scale` / `scale_source`), so they are comparable. Depth-based scale replaces it later.
+The baseline and `kitti_00_pnp.yaml` use the ground-truth step for scale, so they are comparable but not real monocular VO. `kitti_00_pnpdepth.yaml` takes scale from cached network depth (`scale_source: depth`) and never reads ground truth in the loop.
+Every run writes `run_info.json` with library versions, because results change with the OpenCV version.
 
 Expected data layout under `data_root`:
 
@@ -34,5 +35,6 @@ poses/00.txt
 - `src/evaluate.py` ATE, RPE, RPE drift proxy, KITTI metric, plot, one row per run in `results/results_table.csv`
 - `src/make_labels.py` per-frame local error labels (vs GT) and GT-free features, one dataset CSV for the reliability model
 - `src/extra_features.py` image sharpness/brightness, optical flow, and flow vs estimated-pose epipolar error (no VO rerun needed)
+- `src/depth_cache.py` runs a metric depth network once and caches quarter-res depth maps (needs torch and transformers, preinstalled in Colab)
 - `src/train_reliability.py` gradient boosting reliability model, leave-one-sequence-out, compared with one-feature rules
 - `configs/` one yaml per experiment

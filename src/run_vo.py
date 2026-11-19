@@ -7,9 +7,12 @@ Config key `method`: "twoview" (frame-to-frame baseline) or "pnp" (landmark map 
 """
 import argparse
 import csv
+import json
+import platform
 import time
 from pathlib import Path
 
+import cv2
 import numpy as np
 import yaml
 
@@ -51,13 +54,25 @@ def main():
     out_dir = Path(cfg["out_dir"]) / cfg["name"]
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # scale source: "depth" uses cached network depth and never touches ground truth
+    depth_maps = None
+    use_gt = True
+    if cfg.get("method", "twoview") == "pnp" and cfg.get("scale_source", "gt") == "depth":
+        use_gt = False
+        depth_path = Path(cfg["depth_dir"]) / f"depth_{cfg['sequence']}.npy"
+        depth_maps = np.load(depth_path, mmap_mode="r")
+        print(f"depth scale from {depth_path}, shape {depth_maps.shape}")
+    elif cfg.get("method", "twoview") == "pnp" and cfg.get("scale_source", "gt") == "none":
+        use_gt = False
+
     poses = []
     frame_log = []  # per-frame stats, used later for the reliability model
     t0 = time.time()
     for i in range(n):
         img = seq.image(i)
-        gt_step = seq.gt_step(i) if (seq.gt is not None and i > 0) else None
-        T_wc, info = tracker.process(img, gt_step)
+        gt_step = seq.gt_step(i) if (use_gt and seq.gt is not None and i > 0) else None
+        depth = np.asarray(depth_maps[i], dtype=np.float32) if depth_maps is not None else None
+        T_wc, info = tracker.process(img, gt_step, depth)
         poses.append(T_wc)
         if i > 0:
             frame_log.append({"frame": i, **info})
@@ -76,6 +91,17 @@ def main():
         w.writerows(frame_log)
 
     n_fail = sum(r["failed"] for r in frame_log)
+    info = {
+        "opencv": cv2.__version__,
+        "numpy": np.__version__,
+        "python": platform.python_version(),
+        "frames": len(poses),
+        "tracking_failures": int(n_fail),
+        "seconds": round(elapsed, 1),
+        "config": cfg,
+    }
+    with open(out_dir / "run_info.json", "w") as f:
+        json.dump(info, f, indent=2, default=str)
     print(f"done: {len(poses)} frames, {n_fail} tracking failures, {len(poses) / elapsed:.1f} fps")
     print(f"saved to {out_dir}")
 

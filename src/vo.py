@@ -68,7 +68,7 @@ class TwoViewTracker:
         self.T_wc = np.eye(4)
         self.prev = None
 
-    def process(self, img, gt_step=None):
+    def process(self, img, gt_step=None, depth=None):
         kp, des = self.vo.detect(img)
         if self.prev is None:
             self.prev = (kp, des)

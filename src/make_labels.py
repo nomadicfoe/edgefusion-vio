@@ -97,6 +97,13 @@ def build_run(run_dir, window, thr_t, thr_r):
     df["step_jump"] = (df["est_step"] - med).abs() / med
     df["failed_recent"] = roll(df["failed"]).sum()
 
+    if "depth_rho" in df.columns:  # runs that used depth scale: how far network depth and landmark depth disagree
+        with np.errstate(all="ignore"):
+            df["depth_dev"] = np.abs(np.log(df["depth_rho"]))
+        df["depth_n"] = df["depth_n"].fillna(0)
+        df["depth_dev_max_r"] = roll(df["depth_dev"]).max()
+        df["depth_mad_r"] = roll(df["depth_mad"]).mean()
+
     df["t_pct"] = t_pct
     df["r_deg"] = r_deg
     df["bad"] = ((t_pct > thr_t) | (r_deg > thr_r)).astype(float)

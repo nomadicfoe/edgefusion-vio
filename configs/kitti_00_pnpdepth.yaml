@@ -1,0 +1,24 @@
+name: kitti_00_pnpdepth
+method: pnp                      # landmark map + PnP RANSAC
+data_root: /content/kitti        # change to your local path on desktop or cluster
+sequence: "00"
+out_dir: results
+max_frames: null                 # full sequence
+scale_source: depth              # real monocular: scale from cached network depth, no ground truth in the loop
+depth_dir: /content/drive/MyDrive/edgefusion-vio/depth   # folder with depth_<seq>.npy from src.depth_cache
+
+n_features: 3000
+ratio: 0.75
+ransac_thresh: 1.0               # essential matrix RANSAC (px)
+min_inliers: 30                  # tracking failure rule: fewer inliers than this
+
+pnp_thresh: 2.0                  # PnP RANSAC reprojection threshold (px)
+reproj_thresh: 2.0               # triangulation reprojection check (px)
+min_parallax_deg: 0.5            # reject landmarks with less parallax than this
+max_depth: 150.0                 # m
+max_step: 4.0                    # m per frame; a larger pose jump counts as a failure
+
+depth_gain: 0.5                  # share of the depth scale error corrected per frame. 1.0 over-corrects. Try 0.3 and 0.7 on real depth
+depth_zmin: 4.0                  # m, landmarks used for the depth ratio
+depth_zmax: 50.0
+depth_min_pts: 30
