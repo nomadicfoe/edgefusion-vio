@@ -50,6 +50,7 @@ class PnPTracker:
 
         # depth scale settings
         self.depth_gain = cfg.get("depth_gain", 0.5)  # 1 = full correction each frame (unstable), 0.3-0.5 works
+        self.depth_bias = cfg.get("depth_bias", 1.0)  # network depth is divided by this (network overestimates KITTI depth)
         self.depth_zmin = cfg.get("depth_zmin", 4.0)  # m, landmarks used for the ratio
         self.depth_zmax = cfg.get("depth_zmax", 50.0)
         self.depth_min_pts = cfg.get("depth_min_pts", 30)
@@ -158,6 +159,7 @@ class PnPTracker:
         xx = (px[:, 0] + 0.5) * wd / w - 0.5
         zn = map_coordinates(depth.astype(np.float32), [yy, xx], order=1, mode="nearest")
         # select by the network depth, not by the noisy triangulated depth (that would bias the ratio)
+        zn = zn / self.depth_bias
         good = np.isfinite(zn) & (zn > self.depth_zmin) & (zn < self.depth_zmax) & (z > 0.5)
         if good.sum() < self.depth_min_pts:
             return None

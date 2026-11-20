@@ -19,6 +19,7 @@ max_depth: 150.0                 # m
 max_step: 4.0                    # m per frame; a larger pose jump counts as a failure
 
 depth_gain: 0.5                  # share of the depth scale error corrected per frame. 1.0 over-corrects. Try 0.3 and 0.7 on real depth
+depth_bias: 1.0                  # divide network depth by this. Fit on 00 and 05 only (see README), then judge on the others
 depth_zmin: 4.0                  # m, landmarks used for the depth ratio
 depth_zmax: 50.0
 depth_min_pts: 30
